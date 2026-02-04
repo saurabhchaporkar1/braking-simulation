@@ -16,11 +16,11 @@
     }
 
     .controls {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      display: flex;
+      justify-content: center;
       gap: 10px;
       max-width: 700px;
-      margin: auto;
+      margin: 20px auto;
     }
 
     .controls label {
@@ -30,6 +30,36 @@
     select, input {
       width: 100%;
       padding: 6px;
+    }
+
+    .speedometer {
+      width: 150px;
+      height: 150px;
+      margin: 20px auto;
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      border: 8px solid #1a252f;
+    }
+
+    .speed-display {
+      text-align: center;
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    #speedValue {
+      font-size: 48px;
+      line-height: 1;
+    }
+
+    .speed-label {
+      font-size: 14px;
+      color: #7fdbff;
+      margin-top: 5px;
     }
 
     .track {
@@ -91,56 +121,30 @@
 
 <body>
 
-<h1>🚗 It’s a Drag – Braking Distance Simulation</h1>
+<h1>🚗 It's a Drag – Braking Distance Simulation</h1>
 
 <div class="controls">
   <div>
-    <label>Speed (km/h)</label>
-    <input type="number" id="speed" value="40">
-  </div>
-
-  <div>
-    <label>Vehicle</label>
-    <select id="vehicle">
-      <option value="1">Car</option>
-      <option value="1.2">Van</option>
-      <option value="1.5">Truck</option>
-      <option value="1.8">Loaded Truck</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Tyres</label>
-    <select id="tyres">
-      <option value="0.7">Treaded</option>
-      <option value="0.4">Bald</option>
-      <option value="0.8">Slick</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Road</label>
+    <label>Road Surface</label>
     <select id="road">
-      <option value="1">Bitumen</option>
-      <option value="0.6">Dirt</option>
-      <option value="0.5">Gravel</option>
+      <option value="0.9">Concrete</option>
+      <option value="0.8">Asphalt</option>
+      <option value="0.6">Paver Tiles</option>
+      <option value="0.4">Polished Granite</option>
     </select>
   </div>
+</div>
 
-  <div>
-    <label>Weather</label>
-    <select id="weather">
-      <option value="1">Dry</option>
-      <option value="0.6">Wet</option>
-      <option value="0.2">Icy</option>
-    </select>
+<div class="speedometer">
+  <div class="speed-display">
+    <div id="speedValue">0</div>
+    <div class="speed-label">km/h</div>
   </div>
 </div>
 
 <div class="buttons">
   <div class="light" id="light"></div><br>
   <button onclick="startTest()">Start</button>
-  <button onclick="brake()">Brake</button>
   <button onclick="resetSim()">Reset</button>
 </div>
 
@@ -150,75 +154,120 @@
 
 <table>
   <tr>
-    <th>Reaction Distance (m)</th>
     <th>Braking Distance (m)</th>
-    <th>Total Distance (m)</th>
+    <th>Total Distance Travelled (m)</th>
   </tr>
   <tr>
-    <td id="reactionDist">–</td>
     <td id="brakingDist">–</td>
     <td id="totalDist">–</td>
   </tr>
 </table>
 
 <script>
-  let startTime, moving = false, animation;
+  let currentSpeed = 0;
+  let moving = false;
+  let animation;
+  let speedInterval;
+  let braking = false;
+  let carPosition = 0;
+  let accelerationDistance = 0;
+  
   const car = document.getElementById("car");
   const light = document.getElementById("light");
+  const speedDisplay = document.getElementById("speedValue");
 
   function startTest() {
     resetSim();
     light.style.background = "green";
     moving = true;
-    startTime = Date.now();
+    currentSpeed = 0;
+    braking = false;
+    carPosition = 0;
+    accelerationDistance = 0;
 
-    setTimeout(() => {
-      light.style.background = "red";
-    }, 2000);
+    // Accelerate to 50 km/h
+    speedInterval = setInterval(() => {
+      if (currentSpeed < 50 && !braking) {
+        currentSpeed += 2;
+        if (currentSpeed > 50) currentSpeed = 50;
+        speedDisplay.innerText = Math.round(currentSpeed);
+        
+        // Calculate distance during acceleration (using average speed)
+        const speedMs = currentSpeed / 3.6;
+        accelerationDistance += speedMs * 0.1; // 0.1 seconds per interval
+        
+        // Auto-brake when reaching 50 km/h
+        if (currentSpeed >= 50) {
+          applyBrakes();
+        }
+      }
+    }, 100);
 
     animation = setInterval(moveCar, 20);
   }
 
-  function brake() {
-    if (!moving) return;
+  function applyBrakes() {
+    if (braking) return;
+    
+    braking = true;
+    light.style.background = "red";
+    clearInterval(speedInterval);
 
-    moving = false;
-    clearInterval(animation);
+    const road = parseFloat(document.getElementById("road").value);
+    
+    // Add variation: random factor between 0.85 and 1.15 (±15% variation)
+    const variation = 0.85 + Math.random() * 0.3;
+    const friction = road * variation;
 
-    const reactionTime = (Date.now() - startTime - 2000) / 1000;
-    if (reactionTime < 0) return;
+    const speed = 50 / 3.6; // Convert to m/s
 
-    const speedKmh = document.getElementById("speed").value;
-    const speed = speedKmh / 3.6;
-
-    const vehicle = document.getElementById("vehicle").value;
-    const tyres = document.getElementById("tyres").value;
-    const road = document.getElementById("road").value;
-    const weather = document.getElementById("weather").value;
-
-    const friction = tyres * road * weather / vehicle;
-
-    const reactionDistance = speed * reactionTime;
+    // Calculate braking distance using physics formula
     const brakingDistance = (speed * speed) / (2 * friction * 9.8);
-    const total = reactionDistance + brakingDistance;
+    
+    // Total distance is acceleration distance + braking distance
+    const totalDistanceTravelled = accelerationDistance + brakingDistance;
 
-    document.getElementById("reactionDist").innerText = reactionDistance.toFixed(2);
-    document.getElementById("brakingDist").innerText = brakingDistance.toFixed(2);
-    document.getElementById("totalDist").innerText = total.toFixed(2);
+    // Decelerate the car
+    const decelInterval = setInterval(() => {
+      if (currentSpeed > 0) {
+        currentSpeed -= 3;
+        if (currentSpeed < 0) currentSpeed = 0;
+        speedDisplay.innerText = Math.round(currentSpeed);
+      } else {
+        clearInterval(decelInterval);
+        moving = false;
+        clearInterval(animation);
+        
+        // Display results
+        document.getElementById("brakingDist").innerText = brakingDistance.toFixed(2);
+        document.getElementById("totalDist").innerText = totalDistanceTravelled.toFixed(2);
+      }
+    }, 100);
   }
 
   function moveCar() {
-    let left = car.offsetLeft;
-    car.style.left = (left + 2) + "px";
+    if (moving && !braking) {
+      carPosition += 2;
+      car.style.left = carPosition + "px";
+    } else if (braking && currentSpeed > 0) {
+      // Slow down movement during braking
+      carPosition += (currentSpeed / 50) * 2;
+      car.style.left = carPosition + "px";
+    }
   }
 
   function resetSim() {
     clearInterval(animation);
+    clearInterval(speedInterval);
     car.style.left = "0px";
+    carPosition = 0;
+    accelerationDistance = 0;
     light.style.background = "green";
     moving = false;
+    braking = false;
+    currentSpeed = 0;
+    speedDisplay.innerText = "0";
 
-    document.getElementById("reactionDist").innerText = "–";
     document.getElementById("brakingDist").innerText = "–";
     document.getElementById("totalDist").innerText = "–";
   }
