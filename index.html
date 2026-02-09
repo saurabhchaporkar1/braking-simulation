@@ -78,8 +78,18 @@
       left: 0;
       width: 60px;
       height: 40px;
-      background: red;
+      background: blue;
       border-radius: 5px;
+    }
+
+    .brake-line {
+      position: absolute;
+      top: 0;
+      left: 400px;
+      width: 4px;
+      height: 100%;
+      background: red;
+      z-index: 1;
     }
 
     .light {
@@ -104,7 +114,7 @@
     table {
       margin: auto;
       border-collapse: collapse;
-      width: 400px;
+      width: 600px;
     }
 
     td, th {
@@ -145,19 +155,23 @@
 <div class="buttons">
   <div class="light" id="light"></div><br>
   <button onclick="startTest()">Start</button>
+  <button onclick="brake()">Brake</button>
   <button onclick="resetSim()">Reset</button>
 </div>
 
 <div class="track">
+  <div class="brake-line"></div>
   <div class="car" id="car"></div>
 </div>
 
 <table>
   <tr>
-    <th>Braking Distance (m)</th>
+    <th>Theoretical Braking Distance (m)</th>
+    <th>Actual Braking Distance (m)</th>
     <th>Total Distance Travelled (m)</th>
   </tr>
   <tr>
+    <td id="theoreticalDist">–</td>
     <td id="brakingDist">–</td>
     <td id="totalDist">–</td>
   </tr>
@@ -171,6 +185,9 @@
   let braking = false;
   let carPosition = 0;
   let accelerationDistance = 0;
+  let speedReached50 = false;
+  let brakeAppliedPosition = 0;
+  let brakeLinePosition = 400; // Position of the red line
   
   const car = document.getElementById("car");
   const light = document.getElementById("light");
@@ -184,6 +201,8 @@
     braking = false;
     carPosition = 0;
     accelerationDistance = 0;
+    speedReached50 = false;
+    brakeAppliedPosition = 0;
 
     // Accelerate to 50 km/h
     speedInterval = setInterval(() => {
@@ -196,9 +215,9 @@
         const speedMs = currentSpeed / 3.6;
         accelerationDistance += speedMs * 0.1; // 0.1 seconds per interval
         
-        // Auto-brake when reaching 50 km/h
-        if (currentSpeed >= 50) {
-          applyBrakes();
+        if (currentSpeed >= 50 && !speedReached50) {
+          speedReached50 = true;
+          light.style.background = "yellow"; // Signal to get ready
         }
       }
     }, 100);
@@ -206,8 +225,11 @@
     animation = setInterval(moveCar, 20);
   }
 
-  function applyBrakes() {
-    if (braking) return;
+  function brake() {
+    if (!moving || braking || !speedReached50) return;
+    
+    // Record where the brake was applied
+    brakeAppliedPosition = carPosition;
     
     braking = true;
     light.style.background = "red";
@@ -220,11 +242,18 @@
 
     const speed = 50 / 3.6; // Convert to m/s
 
-    // Calculate braking distance using physics formula
-    const brakingDistance = (speed * speed) / (2 * friction * 9.8);
+    // Calculate THEORETICAL braking distance (if braked at the red line)
+    const theoreticalBrakingDistance = (speed * speed) / (2 * friction * 9.8);
     
-    // Total distance is acceleration distance + braking distance
-    const totalDistanceTravelled = accelerationDistance + brakingDistance;
+    // Calculate ACTUAL braking distance based on student's brake timing
+    // Distance from brake line to where student actually braked
+    const brakingDifference = brakeAppliedPosition - brakeLinePosition;
+    
+    // Actual braking distance = theoretical distance (physics remains same)
+    const actualBrakingDistance = theoreticalBrakingDistance;
+    
+    // Total distance includes where they actually started braking
+    const totalDistanceTravelled = brakeAppliedPosition + actualBrakingDistance;
 
     // Decelerate the car
     const decelInterval = setInterval(() => {
@@ -238,7 +267,8 @@
         clearInterval(animation);
         
         // Display results
-        document.getElementById("brakingDist").innerText = brakingDistance.toFixed(2);
+        document.getElementById("theoreticalDist").innerText = theoreticalBrakingDistance.toFixed(2);
+        document.getElementById("brakingDist").innerText = actualBrakingDistance.toFixed(2);
         document.getElementById("totalDist").innerText = totalDistanceTravelled.toFixed(2);
       }
     }, 100);
@@ -261,12 +291,15 @@
     car.style.left = "0px";
     carPosition = 0;
     accelerationDistance = 0;
+    speedReached50 = false;
+    brakeAppliedPosition = 0;
     light.style.background = "green";
     moving = false;
     braking = false;
     currentSpeed = 0;
     speedDisplay.innerText = "0";
 
+    document.getElementById("theoreticalDist").innerText = "–";
     document.getElementById("brakingDist").innerText = "–";
     document.getElementById("totalDist").innerText = "–";
   }
