@@ -215,9 +215,8 @@
 
     const road = parseFloat(document.getElementById("road").value);
     
-    // Add variation: random factor between 0.85 and 1.15 (±15% variation)
-    const variation = 0.85 + Math.random() * 0.3;
-    const friction = road * variation;
+    // Use constant friction coefficient (no variation)
+    const friction = road;
 
     const speed = 50 / 3.6; // Convert to m/s
 
